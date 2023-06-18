@@ -6,15 +6,25 @@
     <title>Unity WebGL Player | WebTest</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
-    <script src="TemplateData/UnityProgress.js"></script>
-    <script src="Build/UnityLoader.js"></script>
-    <script>
-      var unityInstance = UnityLoader.instantiate("unityContainer", "Build/UnityWebCollectDevice.json", {onProgress: UnityProgress});
-    </script>
   </head>
   <body>
+    <div id="unity-container" class="unity-desktop">
+      <canvas id="unity-canvas" width=960 height=600></canvas>
+      <div id="unity-loading-bar">
+        <div id="unity-logo"></div>
+        <div id="unity-progress-bar-empty">
+          <div id="unity-progress-bar-full"></div>
+        </div>
+      </div>
+      <div id="unity-warning"> </div>
+      <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">WebTest</div>
+      </div>
+    </div>
     <script>
-        //复制文本
+       //�����ı�
         function copy(text)
         {
             var element = createElement(text);
@@ -24,24 +34,24 @@
             element.remove();
         }
  
-        //创建临时的输入框元素
+        //������ʱ�������Ԫ��
         function createElement(text)
         {
             var isRTL = document.documentElement.getAttribute('dir') === 'rtl';
             var element = document.createElement('textarea');
-            // 防止在ios中产生缩放效果
+            // ��ֹ��ios�в�������Ч��
             element.style.fontSize = '12pt';
-            // 重置盒模型
+            // ���ú�ģ��
             element.style.border = '0';
             element.style.padding = '0';
             element.style.margin = '0';
-            // 将元素移到屏幕外
+            // ��Ԫ���Ƶ���Ļ��
             element.style.position = 'absolute';
             element.style[isRTL ? 'right' : 'left'] = '-9999px';
-            // 移动元素到页面底部
+            // �ƶ�Ԫ�ص�ҳ��ײ�
             let yPosition = window.pageYOffset || document.documentElement.scrollTop;
             element.style.top = `${yPosition}px`;
-            //设置元素只读
+            //����Ԫ��ֻ��
             element.setAttribute('readonly', '');
             element.value = text;
             document.body.appendChild(element);
@@ -52,7 +62,7 @@
         {
             if(navigator.deviceMemory == null)
             {
-                return 2;  // 手机上拿不到这个值，所以暂时返回2GB
+                return 2;  // �ֻ����ò������ֵ��������ʱ����2GB
             }
             return navigator.deviceMemory;
         }
@@ -66,23 +76,106 @@
         {
             if(navigator.userAgentData == null || navigator.userAgentData.mobile)
             {
-                // 当前使用的设备是手机
+                // ��ǰʹ�õ��豸���ֻ�
                 return true;
             }
             else
             {
-                // 当前使用的设备是电脑
+                // ��ǰʹ�õ��豸�ǵ���
                 return false;
             }
         }
+
+      var container = document.querySelector("#unity-container");
+      var canvas = document.querySelector("#unity-canvas");
+      var loadingBar = document.querySelector("#unity-loading-bar");
+      var progressBarFull = document.querySelector("#unity-progress-bar-full");
+      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
+      var warningBanner = document.querySelector("#unity-warning");
+
+      // Shows a temporary message banner/ribbon for a few seconds, or
+      // a permanent error message on top of the canvas if type=='error'.
+      // If type=='warning', a yellow highlight color is used.
+      // Modify or remove this function to customize the visually presented
+      // way that non-critical warnings and error messages are presented to the
+      // user.
+      function unityShowBanner(msg, type) {
+        function updateBannerVisibility() {
+          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+          setTimeout(function() {
+            warningBanner.removeChild(div);
+            updateBannerVisibility();
+          }, 5000);
+        }
+        updateBannerVisibility();
+      }
+
+      var buildUrl = "Build";
+      var loaderUrl = buildUrl + "/UnityWebCollectDevice.loader.js";
+      var config = {
+        dataUrl: buildUrl + "/UnityWebCollectDevice.data",
+        frameworkUrl: buildUrl + "/UnityWebCollectDevice.framework.js",
+        codeUrl: buildUrl + "/UnityWebCollectDevice.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "WebTest",
+        productVersion: "0.1",
+        showBanner: unityShowBanner,
+      };
+
+      // By default Unity keeps WebGL canvas render target size matched with
+      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
+      // Set this to false if you want to decouple this synchronization from
+      // happening inside the engine, and you would instead like to size up
+      // the canvas DOM size and WebGL render target sizes yourself.
+      // config.matchWebGLToCanvasSize = false;
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        // Mobile device style: fill the whole browser client area with the game canvas:
+
+        var meta = document.createElement('meta');
+        meta.name = 'viewport';
+        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+        document.getElementsByTagName('head')[0].appendChild(meta);
+        container.className = "unity-mobile";
+        canvas.className = "unity-mobile";
+
+        // To lower canvas resolution on mobile devices to gain some
+        // performance, uncomment the following line:
+        // config.devicePixelRatio = 1;
+
+        unityShowBanner('WebGL builds are not supported on mobile devices.');
+      } else {
+        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
+
+        canvas.style.width = "960px";
+        canvas.style.height = "600px";
+      }
+
+      loadingBar.style.display = "block";
+
+      var script = document.createElement("script");
+      script.src = loaderUrl;
+      script.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          progressBarFull.style.width = 100 * progress + "%";
+        }).then((unityInstance) => {
+          loadingBar.style.display = "none";
+          fullscreenButton.onclick = () => {
+            unityInstance.SetFullscreen(1);
+          };
+        }).catch((message) => {
+          alert(message);
+        });
+      };
+      document.body.appendChild(script);
     </script>
-    <div class="webgl-content">
-      <div id="unityContainer" style="width: 960px; height: 600px"></div>
-      <div class="footer">
-        <div class="webgl-logo"></div>
-        <div class="fullscreen" onclick="unityInstance.SetFullscreen(1)"></div>
-        <div class="title">WebTest</div>
-      </div>
-    </div>
   </body>
 </html>
